@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pourover">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme:dark)">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme:light)">
+<title>Pourover</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231C1C1E'/><text x='50' y='62' text-anchor='middle' font-size='52'>☕</text></svg>">
+<style>
+:root{
+  --bg:#F2F2F7;--card:#FFFFFF;--text:#000;--t2:#8E8E93;--t3:#C7C7CC;
+  --sep:rgba(60,60,67,.12);--nav:rgba(249,249,249,.94);--input:rgba(120,120,128,.12);
+  --acc:#C87A44;--acc-soft:rgba(200,122,68,.1);--acc-text:#A0612E;
+  --green:#34C759;--red:#FF3B30;--amber:#FF9F0A;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#000;--card:#1C1C1E;--text:#FFF;--t2:#8E8E93;--t3:#48484A;
+  --sep:rgba(84,84,88,.36);--nav:rgba(30,30,30,.94);--input:rgba(120,120,128,.2);
+  --acc:#D4915A;--acc-soft:rgba(212,145,90,.12);--acc-text:#E8A76E;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;
+  background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;overflow-x:hidden;min-height:100vh;min-height:100dvh}
+input,textarea,select{font-family:inherit;font-size:17px}
+button{font-family:inherit}
+
+/* Layout */
+#app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-bottom:calc(80px + var(--safe-b));padding-top:var(--safe-t)}
+
+/* Tab bar */
+.tab-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--nav);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:.5px solid var(--sep);padding-bottom:var(--safe-b);
+  display:flex;justify-content:center}
+.tab-bar-inner{display:flex;max-width:480px;width:100%;justify-content:space-around;padding:6px 0 2px}
+.tab-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;
+  border:none;padding:4px 16px;cursor:pointer;color:var(--t2);font-size:10px;font-weight:500;transition:color .15s}
+.tab-btn.active{color:var(--acc)}
+.tab-btn svg{width:25px;height:25px}
+
+/* Typography */
+.large-title{font-size:34px;font-weight:700;letter-spacing:-.5px;padding:12px 20px 8px}
+.section-head{font-size:13px;font-weight:600;color:var(--t2);text-transform:uppercase;
+  letter-spacing:-.1px;padding:24px 20px 8px}
+.section-head:first-child{padding-top:8px}
+
+/* Cards */
+.card{background:var(--card);border-radius:12px;margin:0 16px 8px;overflow:hidden}
+.card-pad{padding:16px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;
+  border-bottom:.5px solid var(--sep)}
+.row:last-child{border-bottom:none}
+.row-tap{cursor:pointer;transition:background .1s}
+.row-tap:active{background:var(--input)}
+
+/* Inputs */
+.input{width:100%;padding:11px 16px;border-radius:10px;border:none;background:var(--input);
+  color:var(--text);font-size:17px;outline:none}
+.input::placeholder{color:var(--t3)}
+.label{font-size:13px;font-weight:500;color:var(--t2);margin-bottom:6px;padding:0 4px}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;width:100%;padding:15px;
+  border-radius:12px;font-size:17px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s}
+.btn:active{opacity:.7}
+.btn-primary{background:var(--acc);color:#FFF}
+.btn-secondary{background:var(--input);color:var(--text)}
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  padding:13px 16px;background:none;border:none;border-top:.5px solid var(--sep);
+  color:var(--acc);font-size:15px;font-weight:500;cursor:pointer}
+.btn-add:active{background:var(--input)}
+.back-btn{background:none;border:none;color:var(--acc);font-size:17px;font-weight:400;
+  cursor:pointer;display:flex;align-items:center;gap:2px;padding:0}
+.save-btn{background:none;border:none;color:var(--acc);font-size:17px;font-weight:600;
+  cursor:pointer;padding:0}
+
+/* Pills */
+.pills{display:flex;gap:8px}
+.pill{padding:8px 18px;border-radius:8px;font-size:15px;font-weight:400;background:var(--input);
+  color:var(--text);border:none;cursor:pointer;transition:all .15s}
+.pill.active{background:var(--acc);color:#FFF;font-weight:600}
+
+/* Tags */
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:400;background:var(--input);
+  color:var(--t2);border:none;cursor:pointer;transition:all .15s}
+.tag.active{background:var(--acc);color:#FFF;font-weight:600}
+
+/* Stars */
+.stars{display:flex;gap:4px}
+.star-btn{background:none;border:none;padding:3px;cursor:pointer;color:var(--t3);transition:transform .1s}
+.star-btn:active{transform:scale(1.15)}
+.star-btn.on{color:var(--amber)}
+
+/* Param grid */
+.params{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--sep);
+  border-radius:12px;overflow:hidden;margin:16px}
+.param{background:var(--card);padding:12px 8px;text-align:center}
+.param-label{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+.param-val{font-size:17px;font-weight:700}
+
+/* Step */
+.step{display:flex;gap:12px;padding:13px 16px;border-bottom:.5px solid var(--sep);align-items:flex-start}
+.step:last-child{border-bottom:none}
+.step-time{min-width:48px;font-size:14px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums;padding-top:1px}
+.step-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.step-badge{font-size:12px;padding:3px 8px;border-radius:6px;background:var(--input);color:var(--t2)}
+.step-badge.switch-open{color:var(--green)}
+.step-badge.switch-closed{color:var(--amber)}
+
+/* Tip */
+.tip{margin:8px 16px;padding:12px 16px;background:var(--acc-soft);border-radius:12px;
+  font-size:14px;line-height:1.55;color:var(--text)}
+
+/* Toast */
+.toast{position:fixed;top:calc(12px + var(--safe-t));left:50%;transform:translateX(-50%);
+  background:var(--card);color:var(--text);padding:12px 24px;border-radius:14px;font-size:15px;
+  font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,.15);z-index:200;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* Nav header */
+.nav-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px 8px}
+
+/* Copy section */
+.copy-box{margin:0 16px;padding:12px 16px;background:var(--card);border-radius:12px;
+  font-size:13px;line-height:1.5;color:var(--t2);white-space:pre-wrap;font-family:'SF Mono',Menlo,monospace;
+  max-height:200px;overflow-y:auto;border:.5px solid var(--sep)}
+
+/* Animate */
+.page{animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Swipe delete */
+.swipe-row{position:relative;overflow:hidden}
+.delete-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);
+  display:flex;align-items:center;justify-content:center;color:#FFF;font-weight:600;font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="tab-bar">
+  <div class="tab-bar-inner" id="tabBar"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══ DATA ═══
+const TAGS=["Sweet","Acidic","Bitter","Sour","Balanced","Thin","Full-bodied","Fruity","Floral","Nutty","Chocolatey","Clean","Muddy","Over-extracted","Under-extracted","Astringent","Juicy","Smooth"];
+const BREWERS=[["switch","Hario Switch"],["v60","V60 02"]];
+const ROASTS=["Light","Medium","Dark"];
+
+function loadJSON(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}}
+function saveJSON(k,v){localStorage.setItem(k,JSON.stringify(v))}
+
+let beans=loadJSON("po_beans",[]);
+let logs=loadJSON("po_logs",[]);
+let recipes=loadJSON("po_recipes",[]);
+
+function saveBeans(){saveJSON("po_beans",beans)}
+function saveLogs(){saveJSON("po_logs",logs)}
+function saveRecipes(){saveJSON("po_recipes",recipes)}
+
+// ═══ ROUTING ═══
+let currentTab="home";
+let subView=null;
+let editState={};
+
+const $=id=>document.getElementById(id);
+const app=$("app");
+
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2000)}
+
+function chevron(){return`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>`}
+function backArrow(){return`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`}
+function plusIcon(){return`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`}
+function starSVG(on){return`<svg width="28" height="28" viewBox="0 0 24 24" fill="${on?"currentColor":"none"}" stroke="currentColor" stroke-width="${on?0:1.5}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`}
+function miniStar(){return`<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`}
+function copyIcon(){return`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`}
+function trashIcon(){return`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`}
+function shareIcon(){return`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`}
+
+function render(){
+  renderTabs();
+  if(subView)renderSubView();
+  else if(currentTab==="home")renderHome();
+  else if(currentTab==="brew")renderBrew();
+  else if(currentTab==="log")renderLog();
+  else if(currentTab==="share")renderShare();
+}
+
+function renderTabs(){
+  const tabs=[
+    ["home","Home",`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`],
+    ["brew","Brew",`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`],
+    ["log","Log",`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`],
+    ["share","Share",`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`],
+  ];
+  $("tabBar").innerHTML=tabs.map(([id,label,icon])=>
+    `<button class="tab-btn${currentTab===id?" active":""}" onclick="navTab('${id}')">${icon}<span>${label}</span></button>`
+  ).join("");
+}
+
+function navTab(t){currentTab=t;subView=null;editState={};render()}
+
+function renderSubView(){
+  if(subView==="addBean")renderAddBean();
+  else if(subView==="editBean")renderEditBean();
+  else if(subView==="addRecipe")renderAddRecipe();
+  else if(subView==="logBrew")renderLogBrew();
+  else if(subView==="viewBean")renderViewBean();
+}
+
+// ═══ HOME ═══
+function renderHome(){
+  let h=`<div class="page"><div class="large-title">Pourover</div>`;
+  h+=`<div class="section-head">Bean Library</div><div class="card">`;
+  if(!beans.length) h+=`<div class="row" style="justify-content:center;color:var(--t2)">No beans yet</div>`;
+  else beans.forEach((b,i)=>{
+    h+=`<div class="row row-tap" onclick="viewBean(${i})"><div style="flex:1">
+      <div style="font-size:17px;font-weight:500">${esc(b.roaster||"Unknown")}</div>
+      <div style="font-size:14px;color:var(--t2);margin-top:1px">${esc([b.origin,b.process].filter(Boolean).join(" · ")||"No details")}</div>
+    </div>${chevron()}</div>`;
+  });
+  h+=`<button class="btn-add" onclick="subView='addBean';editState={roaster:'',origin:'',process:'',variety:'',roastLevel:'Light',tastingNotes:'',roastDate:''};render()">${plusIcon()} Add Beans</button></div>`;
+
+  if(logs.length){
+    h+=`<div class="section-head">Recent Brews</div><div class="card">`;
+    logs.slice(0,5).forEach(l=>{
+      h+=`<div class="row"><div style="flex:1">
+        <div style="font-size:15px;font-weight:500">${esc(l.beanLabel)}</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:1px">${l.brewer==="switch"?"Switch":"V60"} · ${l.grindClicks} clicks · ${fmtDate(l.date)}</div>
+        ${l.tags.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${l.tags.map(t=>`<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:var(--acc-soft);color:var(--acc-text);font-weight:500">${esc(t)}</span>`).join("")}</div>`:""}
+      </div><div style="display:flex;align-items:center;gap:3px;color:var(--amber)">${miniStar()}<span style="font-size:17px;font-weight:600">${l.rating}</span></div></div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  app.innerHTML=h;
+}
+
+function viewBean(i){subView="viewBean";editState={idx:i};render()}
+
+function renderViewBean(){
+  const b=beans[editState.idx];
+  let h=`<div class="page"><div class="nav-header">
+    <button class="back-btn" onclick="subView=null;render()">${backArrow()} Back</button>
+    <span style="font-size:17px;font-weight:600">Bean Details</span>
+    <button class="back-btn" style="font-weight:600" onclick="subView='editBean';editState.bean=null;render()">Edit</button>
+  </div>`;
+
+  const fields=[["Roaster",b.roaster],["Origin",b.origin],["Process",b.process],["Variety",b.variety],["Roast Level",b.roastLevel],["Tasting Notes",b.tastingNotes],["Roast Date",b.roastDate]];
+  h+=`<div class="card">`;
+  fields.forEach(([l,v])=>{if(v)h+=`<div class="row"><span style="color:var(--t2)">${l}</span><span style="font-weight:500">${esc(v)}</span></div>`});
+  h+=`</div>`;
+
+  const beanLogs=logs.filter(l=>l.beanId===b.id);
+  if(beanLogs.length){
+    h+=`<div class="section-head">${beanLogs.length} Brew${beanLogs.length>1?"s":""}</div><div class="card">`;
+    beanLogs.forEach(l=>{
+      h+=`<div class="row"><div style="flex:1">
+        <div style="font-size:14px;font-weight:500">${l.brewer==="switch"?"Switch":"V60"} · ${l.grindClicks} clicks</div>
+        <div style="font-size:12px;color:var(--t2)">${fmtDate(l.date)}${l.tags.length?" · "+l.tags.join(", "):""}</div>
+      </div><div style="display:flex;align-items:center;gap:3px;color:var(--amber)">${miniStar()}<span style="font-size:15px;font-weight:600">${l.rating}</span></div></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  h+=`<div style="padding:24px 16px"><button class="btn btn-secondary" style="color:var(--red)" onclick="if(confirm('Delete this bean?')){beans.splice(${editState.idx},1);saveBeans();subView=null;render();toast('Deleted')}">Delete Bean</button></div>`;
+  h+=`</div>`;
+  app.innerHTML=h;
+}
+
+// ═══ ADD/EDIT BEAN ═══
+let ocrText="";
+let ocrScanning=false;
+let ocrPreview=null;
+
+function handleOCRPhoto(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  ocrScanning=true;ocrText="";
+  ocrPreview=URL.createObjectURL(file);
+  render();
+  Tesseract.recognize(file,"eng",{logger:m=>{
+    if(m.status==="recognizing text"&&m.progress){
+      const pct=Math.round(m.progress*100);
+      const el=document.getElementById("ocr-progress");
+      if(el)el.textContent="Reading... "+pct+"%";
+    }
+  }}).then(({data:{text}})=>{
+    ocrText=text.trim();ocrScanning=false;render();
+  }).catch(()=>{
+    ocrText="";ocrScanning=false;render();toast("Could not read text");
+  });
+}
+
+function saveAddBean(){
+  if(!editState.roaster&&!editState.origin)return;
+  beans.push({roaster:editState.roaster,origin:editState.origin,process:editState.process,variety:editState.variety,roastLevel:editState.roastLevel,tastingNotes:editState.tastingNotes,roastDate:editState.roastDate,id:Date.now()});
+  saveBeans();subView=null;ocrText="";ocrPreview=null;render();toast("Bean saved ✓");
+}
+
+function saveEditBean(){
+  const idx=editState.idx;
+  const b=editState.bean;
+  beans[idx]={roaster:b.roaster,origin:b.origin,process:b.process,variety:b.variety,roastLevel:b.roastLevel,tastingNotes:b.tastingNotes,roastDate:b.roastDate,id:beans[idx].id};
+  saveBeans();subView="viewBean";editState={idx:idx};render();toast("Updated ✓");
+}
+
+function renderAddBean(){
+  const s=editState;
+  let h=`<div class="page"><div class="nav-header">
+    <button class="back-btn" onclick="subView=null;ocrText='';ocrPreview=null;render()">${backArrow()} Back</button>
+    <span style="font-size:17px;font-weight:600">Add Beans</span>
+    <button class="save-btn" onclick="saveAddBean()">Save</button>
+  </div><div style="padding:0 16px">`;
+
+  // Camera / OCR section
+  h+=`<input type="file" id="ocrFile" accept="image/*" capture="environment" style="display:none" onchange="handleOCRPhoto(this)">`;
+  h+=`<button onclick="document.getElementById('ocrFile').click()" style="
+    width:100%;padding:${ocrPreview?"0":"24px"};border-radius:12px;border:none;
+    background:var(--input);cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:6px;color:var(--t2);
+    overflow:hidden;position:relative;min-height:${ocrPreview?"0":"90"}px;margin-bottom:16px">`;
+  if(ocrPreview){
+    h+=`<img src="${ocrPreview}" style="width:100%;height:160px;object-fit:cover">`;
+  }else{
+    h+=`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+    h+=`<span style="font-size:15px;font-weight:500">Scan Bean Bag</span>`;
+    h+=`<span style="font-size:13px">Photo → text extraction</span>`;
+  }
+  if(ocrScanning){
+    h+=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff">
+      <div style="width:28px;height:28px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></div>
+      <span id="ocr-progress" style="font-size:14px;font-weight:500">Reading...</span>
+    </div>`;
+  }
+  h+=`</button>`;
+
+  // Show extracted text
+  if(ocrText){
+    h+=`<div style="margin-bottom:16px">
+      <div class="label">Extracted Text <span style="font-weight:400;text-transform:none">(tap a line to copy it)</span></div>
+      <div style="background:var(--card);border-radius:10px;border:.5px solid var(--sep);overflow:hidden">`;
+    const lines=ocrText.split("\n").map(l=>l.trim()).filter(Boolean);
+    lines.forEach((line,i)=>{
+      h+=`<button onclick="navigator.clipboard.writeText('${esc(line.replace(/'/g,"\\'"))}');toast('Copied: ${esc(line.replace(/'/g,"\\'")).substring(0,30)}')" style="
+        display:block;width:100%;text-align:left;padding:10px 14px;
+        border:none;background:none;cursor:pointer;font-size:14px;color:var(--text);
+        font-family:-apple-system,sans-serif;
+        ${i<lines.length-1?"border-bottom:.5px solid var(--sep);":""}">
+        ${esc(line)}
+      </button>`;
+    });
+    h+=`</div></div>`;
+  }
+
+  const fields=[["roaster","Roaster","e.g. Sey, Onyx, April"],["origin","Origin","e.g. Ethiopia Yirgacheffe"],["process","Process","e.g. Washed, Natural, Honey"],["variety","Variety","e.g. Gesha, Bourbon, SL28"],["tastingNotes","Tasting Notes","e.g. Blueberry, jasmine, citrus"],["roastDate","Roast Date","YYYY-MM-DD"]];
+  fields.forEach(([k,l,p])=>{
+    h+=`<div style="margin-bottom:14px"><div class="label">${l}</div>
+    <input class="input" value="${esc(s[k]||"")}" placeholder="${p}" oninput="editState['${k}']=this.value"></div>`;
+  });
+  h+=`<div class="label">Roast Level</div><div class="pills" style="margin-bottom:20px">`;
+  ROASTS.forEach(r=>{h+=`<button class="pill${s.roastLevel===r?" active":""}" onclick="editState.roastLevel='${r}';render()">${r}</button>`});
+  h+=`</div></div></div>`;
+  app.innerHTML=h;
+}
+
+function renderEditBean(){
+  if(!editState.bean)editState.bean={...beans[editState.idx]};
+  const s=editState.bean;
+  let h=`<div class="page"><div class="nav-header">
+    <button class="back-btn" onclick="subView='viewBean';render()">${backArrow()} Back</button>
+    <span style="font-size:17px;font-weight:600">Edit Bean</span>
+    <button class="save-btn" onclick="saveEditBean()">Save</button>
+  </div><div style="padding:0 16px">`;
+  const fields=[["roaster","Roaster","e.g. Sey, Onyx, April"],["origin","Origin","e.g. Ethiopia Yirgacheffe"],["process","Process","e.g. Washed, Natural, Honey"],["variety","Variety","e.g. Gesha, Bourbon, SL28"],["tastingNotes","Tasting Notes","e.g. Blueberry, jasmine, citrus"],["roastDate","Roast Date","YYYY-MM-DD"]];
+  fields.forEach(([k,l,p])=>{
+    h+=`<div style="margin-bottom:14px"><div class="label">${l}</div>
+    <input class="input" value="${esc(s[k]||"")}" placeholder="${p}" oninput="editState.bean['${k}']=this.value"></div>`;
+  });
+  h+=`<div class="label">Roast Level</div><div class="pills" style="margin-bottom:20px">`;
+  ROASTS.forEach(r=>{h+=`<button class="pill${s.roastLevel===r?" active":""}" onclick="editState.bean.roastLevel='${r}';render()">${r}</button>`});
+  h+=`</div></div></div>`;
+  app.innerHTML=h;
+}
+
+// ═══ BREW TAB ═══
+function renderBrew(){
+  let h=`<div class="page"><div class="large-title">Brew</div>`;
+
+  h+=`<div class="section-head">Select Bean</div><div class="card">`;
+  if(!beans.length) h+=`<div class="row" style="justify-content:center;color:var(--t2)">Add beans first</div>`;
+  else beans.forEach((b,i)=>{
+    const sel=editState.selBean===i;
+    h+=`<div class="row row-tap" onclick="editState.selBean=${i};render()" style="background:${sel?"var(--acc-soft)":"transparent"}">
+      <div style="flex:1"><div style="font-size:17px;font-weight:500;color:var(--text)">${esc(b.roaster||"Unknown")}</div>
+      <div style="font-size:14px;color:var(--t2)">${esc([b.origin,b.process].filter(Boolean).join(" · "))}</div></div>
+      ${sel?`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`:""}
+    </div>`;
+  });
+  h+=`</div>`;
+
+  h+=`<div class="section-head">Brewer</div><div class="pills" style="padding:0 16px;margin-bottom:20px">`;
+  if(!editState.brewer)editState.brewer="v60";
+  BREWERS.forEach(([k,l])=>{h+=`<button class="pill${editState.brewer===k?" active":""}" style="flex:1;padding:12px 0" onclick="editState.brewer='${k}';render()">${l}</button>`});
+  h+=`</div>`;
+
+  h+=`<div style="padding:0 16px"><button class="btn ${editState.selBean!=null?"btn-primary":"btn-secondary"}" ${editState.selBean==null?"disabled":""} style="opacity:${editState.selBean!=null?1:.5}" onclick="startRecipe()">Add Recipe & Log Brew</button></div>`;
+  h+=`</div>`;
+  app.innerHTML=h;
+}
+
+function startRecipe(){
+  if(editState.selBean==null)return;
+  const b=beans[editState.selBean];
+  subView="addRecipe";
+  editState={...editState,bean:b,
+    coffeeDose:"15",waterTotal:"250",ratio:"1:16.7",waterTemp:"93",
+    grindClicks:"",grindDesc:"",totalTime:"",
+    steps:[{time:"0:00",action:"",waterAmount:"",switchOpen:""}],
+    notes:"",
+    rating:3,tags:[],logGrind:""
+  };
+  render();
+}
+
+// ═══ ADD RECIPE + LOG ═══
+function renderAddRecipe(){
+  const s=editState;
+  let h=`<div class="page"><div class="nav-header">
+    <button class="back-btn" onclick="subView=null;render()">${backArrow()} Back</button>
+    <span style="font-size:17px;font-weight:600">New Brew</span>
+    <div style="width:50px"></div>
+  </div>`;
+
+  h+=`<div style="padding:4px 20px 0"><div style="font-size:20px;font-weight:700">${esc(s.bean.roaster||"Unknown")}</div>
+  <div style="font-size:15px;color:var(--t2)">${esc(s.bean.origin)} · ${s.brewer==="switch"?"Switch":"V60"}</div></div>`;
+
+  h+=`<div class="section-head">Recipe Parameters</div><div style="padding:0 16px">`;
+  const params=[["coffeeDose","Dose (g)","15"],["waterTotal","Water (g)","250"],["ratio","Ratio","1:16.7"],["waterTemp","Temp (°C)","93"],["grindClicks","Grind (clicks)","65"],["totalTime","Total Time","3:00"]];
+  h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">`;
+  params.forEach(([k,l,p])=>{
+    h+=`<div><div class="label">${l}</div><input class="input" value="${esc(s[k]||"")}" placeholder="${p}" oninput="editState.${k}=this.value"></div>`;
+  });
+  h+=`</div>`;
+  h+=`<div style="margin-bottom:14px"><div class="label">Grind Description</div><input class="input" value="${esc(s.grindDesc||"")}" placeholder="e.g. medium-fine, table salt" oninput="editState.grindDesc=this.value"></div>`;
+  h+=`</div>`;
+
+  // Steps
+  h+=`<div class="section-head">Pour Stages</div><div style="padding:0 16px">`;
+  s.steps.forEach((st,i)=>{
+    h+=`<div style="background:var(--card);border-radius:10px;padding:12px;margin-bottom:8px;border:.5px solid var(--sep)">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1"><div class="label">Time</div><input class="input" style="font-size:15px;padding:8px 12px" value="${esc(st.time)}" placeholder="0:00" oninput="editState.steps[${i}].time=this.value"></div>
+        <div style="flex:1"><div class="label">Water (g)</div><input class="input" style="font-size:15px;padding:8px 12px" value="${esc(st.waterAmount||"")}" placeholder="—" oninput="editState.steps[${i}].waterAmount=this.value"></div>
+        ${s.brewer==="switch"?`<div style="flex:1"><div class="label">Switch</div><select class="input" style="font-size:14px;padding:8px 6px" onchange="editState.steps[${i}].switchOpen=this.value;render()">
+          <option value="" ${!st.switchOpen?"selected":""}>—</option>
+          <option value="open" ${st.switchOpen==="open"?"selected":""}>Open</option>
+          <option value="closed" ${st.switchOpen==="closed"?"selected":""}>Closed</option>
+        </select></div>`:""}
+      </div>
+      <input class="input" style="font-size:15px;padding:8px 12px" value="${esc(st.action)}" placeholder="Pour description..." oninput="editState.steps[${i}].action=this.value">
+      ${s.steps.length>1?`<button style="background:none;border:none;color:var(--red);font-size:13px;margin-top:8px;cursor:pointer" onclick="editState.steps.splice(${i},1);render()">Remove</button>`:""}
+    </div>`;
+  });
+  h+=`<button class="btn btn-secondary" style="margin-bottom:16px;font-size:15px;padding:12px" onclick="editState.steps.push({time:'',action:'',waterAmount:'',switchOpen:''});render()">${plusIcon()} Add Step</button>`;
+  h+=`<div style="margin-bottom:16px"><div class="label">Notes / Tips</div><input class="input" value="${esc(s.notes||"")}" placeholder="Optional brewing tips..." oninput="editState.notes=this.value"></div>`;
+  h+=`</div>`;
+
+  // Log section
+  h+=`<div class="section-head">Rate This Brew</div><div style="padding:0 16px 24px">`;
+  h+=`<div class="label">Rating</div><div class="stars" style="margin-bottom:16px">`;
+  for(let i=1;i<=5;i++) h+=`<button class="star-btn${i<=s.rating?" on":""}" onclick="editState.rating=${i};render()">${starSVG(i<=s.rating)}</button>`;
+  h+=`</div>`;
+  h+=`<div class="label">Tasting Notes</div><div class="tags" style="margin-bottom:20px">`;
+  TAGS.forEach(t=>{h+=`<button class="tag${(s.tags||[]).includes(t)?" active":""}" onclick="toggleTag('${t}')">${t}</button>`});
+  h+=`</div>`;
+  h+=`<button class="btn btn-primary" onclick="saveBrew()">Save Brew</button>`;
+  h+=`</div></div>`;
+  app.innerHTML=h;
+}
+
+function toggleTag(t){
+  if(!editState.tags)editState.tags=[];
+  const i=editState.tags.indexOf(t);
+  if(i>=0)editState.tags.splice(i,1);else editState.tags.push(t);
+  render();
+}
+
+function saveBrew(){
+  const s=editState;
+  // Save recipe
+  const recipe={
+    id:Date.now(),beanId:s.bean.id,brewer:s.brewer,
+    coffeeDose:s.coffeeDose,waterTotal:s.waterTotal,ratio:s.ratio,
+    waterTemp:s.waterTemp,grindClicks:s.grindClicks,grindDesc:s.grindDesc,
+    totalTime:s.totalTime,steps:s.steps.filter(st=>st.action),notes:s.notes,
+    date:new Date().toISOString()
+  };
+  recipes.push(recipe);saveRecipes();
+
+  // Save log
+  const log={
+    id:Date.now()+1,date:new Date().toISOString(),
+    beanId:s.bean.id,beanLabel:`${s.bean.roaster} — ${s.bean.origin}`,
+    brewer:s.brewer,grindClicks:s.grindClicks||s.logGrind,
+    rating:s.rating,tags:s.tags||[],
+    recipeId:recipe.id,
+    recipe:{waterTemp:s.waterTemp,ratio:s.ratio,coffeeDose:s.coffeeDose}
+  };
+  logs.unshift(log);saveLogs();
+
+  subView=null;editState={};currentTab="log";render();toast("Brew logged ✓");
+}
+
+// ═══ LOG TAB ═══
+function renderLog(){
+  let h=`<div class="page"><div class="large-title">Brew Log</div>`;
+  if(!logs.length) h+=`<div class="card"><div class="row" style="justify-content:center;color:var(--t2);padding:40px 16px">No brews yet</div></div>`;
+  else{
+    h+=`<div class="card">`;
+    logs.forEach((l,i)=>{
+      h+=`<div class="row"><div style="flex:1">
+        <div style="font-size:15px;font-weight:500">${esc(l.beanLabel)}</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:1px">${l.brewer==="switch"?"Switch":"V60"} · ${l.grindClicks} clicks · ${fmtDate(l.date)}</div>
+        ${l.tags.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${l.tags.map(t=>`<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:var(--acc-soft);color:var(--acc-text);font-weight:500">${esc(t)}</span>`).join("")}</div>`:""}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:3px;color:var(--amber)">${miniStar()}<span style="font-size:17px;font-weight:600">${l.rating}</span></div>
+        <button style="background:none;border:none;color:var(--t3);cursor:pointer;padding:4px" onclick="event.stopPropagation();if(confirm('Delete this brew?')){logs.splice(${i},1);saveLogs();render();toast('Deleted')}">${trashIcon()}</button>
+      </div></div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  app.innerHTML=h;
+}
+
+// ═══ SHARE TAB (Copy for Claude) ═══
+function renderShare(){
+  let h=`<div class="page"><div class="large-title">Share</div>`;
+  h+=`<div class="section-head">Copy for Claude</div>`;
+  h+=`<div class="tip" style="margin-bottom:12px">Tap a button below to copy your data, then paste it into Claude for recipe generation or dial-in advice.</div>`;
+
+  // Per-bean export
+  if(beans.length){
+    h+=`<div class="card">`;
+    beans.forEach((b,i)=>{
+      const bLogs=logs.filter(l=>l.beanId===b.id);
+      h+=`<div class="row row-tap" onclick="copyBeanContext(${i})">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:500">${esc(b.roaster||"Unknown")}</div>
+          <div style="font-size:13px;color:var(--t2)">${bLogs.length} brew${bLogs.length!==1?"s":""} logged</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--acc)">${copyIcon()}<span style="font-size:14px;font-weight:500">Copy</span></div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  // Copy all
+  h+=`<div style="padding:16px">`;
+  h+=`<button class="btn btn-primary" style="margin-bottom:10px" onclick="copyAllContext()">Copy All Beans & Logs</button>`;
+  h+=`<button class="btn btn-secondary" onclick="copyRecentLogs()">Copy Last 5 Brews Only</button>`;
+  h+=`</div>`;
+
+  // Prompt suggestions
+  h+=`<div class="section-head">Suggested Prompts</div><div class="card">`;
+  const prompts=[
+    "Generate a pourover recipe for this bean",
+    "Help me dial in — analyze my brew history",
+    "My last brew was sour, what should I adjust?",
+    "Suggest a Switch recipe for this light roast"
+  ];
+  prompts.forEach(p=>{
+    h+=`<div class="row row-tap" onclick="copyText('${p}')"><div style="font-size:14px;flex:1">${p}</div>${copyIcon()}</div>`;
+  });
+  h+=`</div>`;
+  h+=`</div>`;
+  app.innerHTML=h;
+}
+
+function buildBeanContext(i){
+  const b=beans[i];
+  const bLogs=logs.filter(l=>l.beanId===b.id);
+  const bRecipes=recipes.filter(r=>r.beanId===b.id);
+  let txt=`☕ BEAN: ${b.roaster||"Unknown"}\n`;
+  txt+=`Origin: ${b.origin||"?"} | Process: ${b.process||"?"} | Variety: ${b.variety||"?"}\n`;
+  txt+=`Roast: ${b.roastLevel||"?"} | Tasting Notes: ${b.tastingNotes||"?"} | Roast Date: ${b.roastDate||"?"}\n`;
+  txt+=`\nEquipment: Mavo Pantox Pro grinder, Fellow Stagg EKG, Hario Switch 03, V60 02\n`;
+
+  if(bLogs.length){
+    txt+=`\n📋 BREW HISTORY (${bLogs.length} brews, newest first):\n`;
+    bLogs.slice(0,10).forEach((l,j)=>{
+      txt+=`${j+1}. ${fmtDate(l.date)} | ${l.brewer==="switch"?"Switch":"V60"} | Grind: ${l.grindClicks} clicks | Rating: ${l.rating}/5`;
+      if(l.tags.length)txt+=` | Notes: ${l.tags.join(", ")}`;
+      if(l.recipe)txt+=` | ${l.recipe.waterTemp}°C, ${l.recipe.ratio}`;
+      txt+=`\n`;
+    });
+  }
+
+  if(bRecipes.length){
+    const last=bRecipes[bRecipes.length-1];
+    txt+=`\nLast recipe: ${last.coffeeDose}g coffee, ${last.waterTotal}g water, ${last.ratio}, ${last.waterTemp}°C, ${last.grindClicks} clicks, ${last.totalTime}\n`;
+    if(last.steps?.length){
+      txt+=`Steps: `;
+      txt+=last.steps.map(s=>`${s.time} ${s.action}${s.waterAmount?` (${s.waterAmount}g)`:""}${s.switchOpen?` [switch ${s.switchOpen}]`:""}`).join(" → ");
+      txt+=`\n`;
+    }
+  }
+  return txt;
+}
+
+function copyBeanContext(i){
+  copyText(buildBeanContext(i));
+}
+
+function copyAllContext(){
+  let txt="";
+  beans.forEach((b,i)=>{txt+=buildBeanContext(i)+"\n---\n\n"});
+  copyText(txt);
+}
+
+function copyRecentLogs(){
+  let txt=`☕ RECENT BREWS (last 5):\nEquipment: Mavo Pantox Pro, Fellow Stagg EKG, Hario Switch 03, V60 02\n\n`;
+  logs.slice(0,5).forEach((l,i)=>{
+    txt+=`${i+1}. ${fmtDate(l.date)} — ${l.beanLabel}\n`;
+    txt+=`   ${l.brewer==="switch"?"Switch":"V60"} | Grind: ${l.grindClicks} clicks | Rating: ${l.rating}/5`;
+    if(l.tags.length)txt+=` | ${l.tags.join(", ")}`;
+    if(l.recipe)txt+=` | ${l.recipe.waterTemp}°C, ${l.recipe.ratio}`;
+    txt+=`\n\n`;
+  });
+  copyText(txt);
+}
+
+// ═══ UTILS ═══
+function copyText(txt){
+  navigator.clipboard.writeText(txt).then(()=>toast("Copied ✓")).catch(()=>{
+    // Fallback
+    const ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+    toast("Copied ✓");
+  });
+}
+
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function fmtDate(d){return new Date(d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}
+
+// Init
+render();
+</script>
+</body>
+</html>
